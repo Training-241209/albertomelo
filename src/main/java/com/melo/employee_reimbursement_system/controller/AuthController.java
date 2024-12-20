@@ -8,34 +8,26 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.melo.employee_reimbursement_system.dto.LoginRequest;
+import com.melo.employee_reimbursement_system.dto.LoginRequestDTO;
 import com.melo.employee_reimbursement_system.model.Users;
-import com.melo.employee_reimbursement_system.service.UsersService;
+import com.melo.employee_reimbursement_system.service.AuthService;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
-    
+
     @Autowired
-    private UsersService usersService;
+    private AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        boolean isAuthenticated = usersService.authenticateUser(loginRequest.getUsername(), loginRequest.getPassword());
-
-        if(!isAuthenticated) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-        }
-
-        return ResponseEntity.ok("Login Successful");
+    public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginRequest) {
+        String token = authService.authenticateUser(loginRequest.getUsername(), loginRequest.getPassword());
+        return ResponseEntity.ok().body(token); 
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> createUser(@RequestBody Users user){
-        if (usersService.existsByUsername(user.getUsername())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already exists");
-        }
-        Users savedUser = usersService.createUser(user);
-        return ResponseEntity.ok(savedUser);
+    public ResponseEntity<?> register(@RequestBody Users user) {
+        authService.registerUser(user); 
+        return ResponseEntity.status(HttpStatus.CREATED).body("User successfully registered!");
     }
 }

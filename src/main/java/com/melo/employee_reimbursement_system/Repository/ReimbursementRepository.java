@@ -1,4 +1,4 @@
-package com.melo.employee_reimbursement_system.Repository;
+package com.melo.employee_reimbursement_system.repository;
 
 import java.util.List;
 
@@ -8,4 +8,5 @@ import com.melo.employee_reimbursement_system.model.Reimbursement;
 
 public interface ReimbursementRepository extends JpaRepository<Reimbursement, Long>{
     List<Reimbursement> findByUser_UserId(Long userId);
+    Boolean existsByUser_UserId(Long userId);
 }

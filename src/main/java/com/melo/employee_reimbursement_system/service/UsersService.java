@@ -1,16 +1,18 @@
 package com.melo.employee_reimbursement_system.service;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
-import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
-import com.melo.employee_reimbursement_system.Repository.RoleRepository;
-import com.melo.employee_reimbursement_system.Repository.UsersRepository;
+import com.melo.employee_reimbursement_system.dto.UsersDTO;
 import com.melo.employee_reimbursement_system.model.Role;
 import com.melo.employee_reimbursement_system.model.Users;
+import com.melo.employee_reimbursement_system.repository.RoleRepository;
+import com.melo.employee_reimbursement_system.repository.UsersRepository;
 
 @Service
 public class UsersService {
@@ -21,53 +23,82 @@ public class UsersService {
     @Autowired
     private RoleRepository roleRepository;
 
-    public Users createUser(Users user){
-        if (user.getRole() == null) {
-            Role employeeRole = roleRepository.findByRoleName("Employee")
-                    .orElseThrow(() -> new RuntimeException("Default 'Employee' role not found"));
-            user.setRole(employeeRole);
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private UserMapper userMapper;
+
+
+    public List<UsersDTO> getAllUsers(String token){
+        Users currentUser = jwtService.decodeToken(token);
+        
+        if(currentUser.getRole().getRoleName().equals("Manager") 
+        || currentUser.getRole().getRoleName().equals("Admin")){
+            List<Users> users = usersRepository.findAll();
+            return users.stream()
+                    .map(user -> userMapper.convertToUsersDTO(user))
+                    .collect(Collectors.toList());
+        } else {
+            throw new IllegalArgumentException("Unauthorized: Only Managers can access all users.");
+        }
+    }
+
+    public Users getUserById(long userId){
+        if(!usersRepository.existsById(userId)){
+            throw new IllegalArgumentException("User with ID: " + userId + "doesn't exist"); 
         }
 
-        String hashedPassword = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(12));
-        user.setPassword(hashedPassword);
-
-        return usersRepository.save(user);
+        return usersRepository.findById(userId).get();
     }
 
-    public boolean authenticateUser(String username, String enteredPassword) {
-        Optional<Users> user = usersRepository.findByUsername(username);
+    public Users promoteUserById(long userId, String token){
+        Users currentUser = jwtService.decodeToken(token);
+        
+        if(currentUser.getRole().getRoleName().equals("Manager") 
+        || currentUser.getRole().getRoleName().equals("Admin") )
+        {
+            if(!usersRepository.existsById(userId)){
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"User with ID: " + userId + " doesn't exist"); 
+            }
 
-        if(user.isEmpty()) {
-            return false;
+            Users userToPromote = usersRepository.findByUserId(userId);
+
+            Role managerRole = roleRepository.findByRoleName("Manager");
+            
+            userToPromote.setRole(managerRole);
+
+            return usersRepository.save(userToPromote);
+
+        } else {
+            throw new IllegalArgumentException("Unauthorized: Only Managers can promote a user.");
         }
-
-        Users _user = user.get();
-
-        boolean passwordMatches = BCrypt.checkpw(enteredPassword, _user.getPassword());
-
-        return passwordMatches;
     }
 
-    public List<Users> getAllUsers(){
-        return usersRepository.findAll();
-    }
-
-    public Users getUserById(long id){
-        return usersRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-    }
-
-    public Optional<Users> deleteUserById(long id){
-        Optional<Users> user = usersRepository.findById(id);
-        usersRepository.deleteById(id);
-        return user;
+    public void deleteUserById(long userId, String token){
+        Users currentUser = jwtService.decodeToken(token);
+        
+        if(currentUser.getRole().getRoleName().equals("Manager") 
+        || currentUser.getRole().getRoleName().equals("Admin") )
+        {
+            if(!usersRepository.existsById(userId)){
+                throw new ResponseStatusException(HttpStatus.CONFLICT,"User with ID: " + userId + " doesn't exist"); 
+            }
+            usersRepository.deleteById(userId);
+        } else {
+            throw new IllegalArgumentException("Unauthorized: Only Managers can delete a user.");
+        }
     }
 
     public boolean existsByUsername(String username){
         return usersRepository.existsByUsername(username);
     }
 
-    public Optional<Users> findByUsername(String username){
+    public boolean existsByEmail(String email){
+        return usersRepository.existsByUsername(email);
+    }
+
+    public Users findByUsername(String username){
         return usersRepository.findByUsername(username);
     }
 

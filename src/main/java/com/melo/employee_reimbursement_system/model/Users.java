@@ -31,6 +31,9 @@ public class Users {
     @Column(name = "password", nullable = false)
     private String password;
 
+    @Column(name = "email", nullable = false)
+    private String email;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL) // Connect all reimbursements to the user | If one user is deleted, all corresponding reimbursements will be deleted
     private List<Reimbursement> reimbursements;
 
@@ -47,6 +50,13 @@ public class Users {
         this.lastname = lastname;
         this.username = username;
         this.password = password;
+        this.role = role;
+    }
+
+    //JWT Constructor
+    public Users(long userId, String email, Role role){
+        this.userId = userId;
+        this.email = email;
         this.role = role;
     }
 
@@ -89,6 +99,14 @@ public class Users {
 
     public void setPassword(String password){
         this.password = password;
+    }
+
+    public String getEmail(){
+        return email;
+    }
+
+    public void setEmail(String email){
+        this.email = email;
     }
 
     public Role getRole(){
